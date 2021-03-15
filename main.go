@@ -54,9 +54,35 @@ func getOneEvent(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getAllEvents(w http.ResponseWriter, r *http.Request) {
+	json.NewEncoder(w).Encode(events)
+}
+
+func updateEvent(w http.ResponseWriter, r *http.Request) {
+	eventID := mux.Vars(r)["id"]
+	var updatedEvent event
+
+	reqBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		fmt.Fprintf(w, "Invalid request - enter new title and description to update event.")
+	}
+
+	json.Unmarshal(reqBody, &updatedEvent)
+
+	for _, oneEvent := range events {
+		if oneEvent.ID == eventID {
+			oneEvent.Title = updatedEvent.Title
+			oneEvent.Description = updatedEvent.Description
+			json.NewEncoder(w).Encode(oneEvent)
+		}
+	}
+}
+
 func main() {
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homeLink)
+	router.HandleFunc("/events", getAllEvents)
 	router.HandleFunc("/events/{id}", getOneEvent)
+	router.HandleFunc("/events/update/{id}", updateEvent)
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
