@@ -69,10 +69,15 @@ func updateEvent(w http.ResponseWriter, r *http.Request) {
 
 	json.Unmarshal(reqBody, &updatedEvent)
 
-	for _, oneEvent := range events {
+	for i, oneEvent := range events {
 		if oneEvent.ID == eventID {
-			oneEvent.Title = updatedEvent.Title
-			oneEvent.Description = updatedEvent.Description
+			if len(updatedEvent.Title) > 0 {
+				oneEvent.Title = updatedEvent.Title
+			}
+			if len(updatedEvent.Description) > 0 {
+				oneEvent.Description = updatedEvent.Description
+			}
+			events = append(events[:i], oneEvent)
 			json.NewEncoder(w).Encode(oneEvent)
 		}
 	}
