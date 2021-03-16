@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -34,6 +35,21 @@ func createEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.Unmarshal(reqBody, &newEvent)
+
+	if len(newEvent.ID) == 0 {
+		var nextID int = 0
+		for _, oneEvent := range events {
+			i, err := strconv.Atoi(oneEvent.ID)
+			if err != nil {
+				fmt.Fprintf(w, "Invalid ID (must be integer).")
+			} else {
+				if i >= nextID {
+					nextID = i
+				}
+			}
+		}
+		newEvent.ID = strconv.Itoa(nextID + 1)
+	}
 	events = append(events, newEvent)
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newEvent)
@@ -77,7 +93,17 @@ func updateEvent(w http.ResponseWriter, r *http.Request) {
 			if len(updatedEvent.Description) > 0 {
 				oneEvent.Description = updatedEvent.Description
 			}
-			events = append(events[:i], oneEvent)
+			events[i] = oneEvent
+			json.NewEncoder(w).Encode(oneEvent)
+		}
+	}
+}
+
+func deleteEvent(w http.ResponseWriter, r *http.Request) {
+	eventID := mux.Vars(r)["id"]
+	for i, oneEvent := range events {
+		if eventID == oneEvent.ID {
+			events = append(events[:i], events[i+1:]...)
 			json.NewEncoder(w).Encode(oneEvent)
 		}
 	}
@@ -86,8 +112,10 @@ func updateEvent(w http.ResponseWriter, r *http.Request) {
 func main() {
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homeLink)
-	router.HandleFunc("/events", getAllEvents)
-	router.HandleFunc("/events/{id}", getOneEvent)
-	router.HandleFunc("/events/update/{id}", updateEvent)
+	router.HandleFunc("/events", getAllEvents).Methods("GET")
+	router.HandleFunc("/events/{id}", getOneEvent).Methods("GET")
+	router.HandleFunc("/events/create", createEvent).Methods("POST")
+	router.HandleFunc("/events/update/{id}", updateEvent).Methods("PATCH")
+	router.HandleFunc("/events/delete/{id}", deleteEvent).Methods("DELETE")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
